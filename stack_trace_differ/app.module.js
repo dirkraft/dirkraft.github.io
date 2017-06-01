@@ -5,8 +5,8 @@ angular.module('StackTraceDiffer', ['LocalStorageModule'])
 .controller('RootCtrl', function ($scope, $filter, localStorageService) {
   const minStackSize = 5;
 
-  localStorageService.bind($scope, 'stackFilter');
-  localStorageService.bind($scope, 'lineFilter');
+  localStorageService.bind($scope, 'stackFilter', '');
+  localStorageService.bind($scope, 'lineFilter', '');
   localStorageService.bind($scope, 'minCount', 1);
 
   const vm = this;
