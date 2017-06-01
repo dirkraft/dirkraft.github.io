@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html ng-app="LSManager">
+<head>
+
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/semantic-ui/2.2.10/semantic.min.css">
+
+  <script src="https://ajax.googleapis.com/ajax/libs/angularjs/1.4.9/angular.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/humanize-plus/1.6.0/humanize.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/lodash.js/4.9.0/lodash.min.js"></script>
+  <script>
+    angular.module('LSManager', [])
+    .controller('RootCtrl', function ($scope) {
+
+      const PEEK_LIMIT = 50;
+
+      // Initial state
+      $scope.localStorage = localStorage;
+
+      // View functions
+      $scope.Humanize = Humanize;
+      $scope.peek = peek;
+      $scope.totalSize = totalSize;
+
+      function peek(value) {
+        let str = '';
+        if (value.length > 0) {
+          str = value.substring(0, PEEK_LIMIT);
+          
+          if (value.length > PEEK_LIMIT) {
+            str += '...';
+          }
+        }
+        return str;
+      }
+
+      function totalSize() {
+        return _.sum(_.map(_.values($scope.localStorage), _.size));
+      }
+    });
+
+  </script>
+</head>
+<body ng-controller="RootCtrl">
+
+<table class="ui table">
+  <thead>
+  <tr>
+    <th></th>
+    <th>app</th>
+    <th>key</th>
+    <th>length</th>
+    <th>peek</th>
+  </tr>
+  </thead>
+  <tbody>
+  <tr ng-repeat="(key, value) in localStorage">
+    <td>
+      <button ng-click="localStorage.removeItem(key)">delete</button>
+    </td>
+    <td>{{ key.split('.', 1)[0] }}</td>
+    <td>{{ key.split('.').slice(1).join('.') }}</td><!-- javascript is dumb -->
+    <td>{{ Humanize.fileSize(value.length) }}</td>
+    <td>
+      {{ peek(value) }}
+    </td>
+  </tr>
+  <tr style="border-top: double;">
+    <td></td>
+    <td></td>
+    <td style="text-align: right;">total</td>
+    <td>{{ Humanize.fileSize(totalSize()) }}</td>
+    <td></td>
+  </tr>
+  </tbody>
+</table>
+</body>
+</html>

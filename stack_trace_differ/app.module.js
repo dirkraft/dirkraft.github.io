@@ -5,13 +5,14 @@ angular.module('StackTraceDiffer', ['LocalStorageModule'])
 .controller('RootCtrl', function ($scope, $filter, localStorageService) {
   const minStackSize = 5;
 
-  localStorageService.bind($scope, 'stackTracesRaw');
   localStorageService.bind($scope, 'stackFilter');
   localStorageService.bind($scope, 'lineFilter');
   localStorageService.bind($scope, 'minCount', 1);
 
   const vm = this;
+  vm.stackTracesRaw = '';
   vm.stackTraces = [];
+  vm.saveStackTracesRaw = saveStackTracesRaw;
 
   vm.stats = []; // each element is [line, count]
   vm.loadStats = loadStats;
@@ -20,7 +21,19 @@ angular.module('StackTraceDiffer', ['LocalStorageModule'])
   vm.graph = []; // each element is {line, count, children: [ recurse ]}
   vm.loadTree = loadTree;
 
-  $('.menu .item').tab();
+  init();
+
+
+  function init() {
+    let compressed = localStorageService.get('stackTracesRaw');
+    vm.stackTracesRaw = LZString.decompress(compressed);
+    $('.menu .item').tab();
+  }
+
+  function saveStackTracesRaw() {
+    let compressed = LZString.compress(vm.stackTracesRaw);
+    localStorageService.set('stackTracesRaw', compressed);
+  }
 
   function loadStats() {
     parseStacks();
@@ -36,7 +49,7 @@ angular.module('StackTraceDiffer', ['LocalStorageModule'])
     vm.stackTraces = [];
 
     let framePattern = /^[\w\d.]+\([\w\d. :]+\)$/;
-    let lines = $scope.stackTracesRaw.split("\n");
+    let lines = vm.stackTracesRaw.split("\n");
     let currentStackBuilder = [];
 
     function checkCompleteStack() {

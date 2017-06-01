@@ -4,11 +4,13 @@
   <title>Stack Trace Differ</title>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/lodash.js/4.17.4/lodash.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/angular.js/1.6.1/angular.min.js"></script>
-  <script
-      src="https://cdnjs.cloudflare.com/ajax/libs/angular-local-storage/0.6.0/angular-local-storage.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/angular-local-storage/0.6.0/angular-local-storage.min.js">
+  </script>
+
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.2.1/jquery.min.js"></script>
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/semantic-ui/2.2.10/semantic.min.css">
   <script src="https://cdnjs.cloudflare.com/ajax/libs/semantic-ui/2.2.10/semantic.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/lz-string/1.4.4/lz-string.min.js"></script>
   <style>
     .ui.tab.active {
       display: flex;
@@ -29,7 +31,16 @@
 <!-- TODO Add other stack trace sources, including polling sources. -->
 <div class="ui bottom attached active tab segment" data-tab="input"
      style="flex-grow: 1; flex-direction: column; margin-bottom: 0;">
-  <textarea ng-model="stackTracesRaw" style="width: 100%; flex-grow: 1;"></textarea>
+  <div>
+    This app makes use of
+    <a href="https://developer.mozilla.org/en-US/docs/Web/API/Web_Storage_API">localStorage</a>.
+    Errors and broke-ass-ness may occur if localStorage is full (most browsers only store a few MB),
+    and this app doesn't help you. You can try to remove
+    <a href="../localStorage.html">localStoraged ata for dirkraft.github.io</a>.
+    Then try inputting less stack trace data.
+  </div>
+  <textarea ng-model="vm.stackTracesRaw" ng-model-options="{ debounce: 150 }"
+            ng-change="vm.saveStackTracesRaw()" style="width: 100%; flex-grow: 1;"></textarea>
 </div>
 
 <div class="ui bottom attached tab segment grid" data-tab="slice" style="flex-grow: 1;">
