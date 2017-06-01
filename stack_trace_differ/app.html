@@ -2,8 +2,10 @@
 <html ng-app="StackTraceDiffer">
 <head>
   <title>Stack Trace Differ</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/lodash.js/4.17.4/lodash.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/angular.js/1.6.1/angular.min.js"></script>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/angular-local-storage/0.6.0/angular-local-storage.min.js"></script>
+  <script
+      src="https://cdnjs.cloudflare.com/ajax/libs/angular-local-storage/0.6.0/angular-local-storage.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.2.1/jquery.min.js"></script>
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/semantic-ui/2.2.10/semantic.min.css">
   <script src="https://cdnjs.cloudflare.com/ajax/libs/semantic-ui/2.2.10/semantic.min.js"></script>
@@ -17,30 +19,79 @@
 <body ng-controller="RootCtrl as vm" style="display: flex; flex-direction: column;">
 
 <div class="ui top attached tabular menu">
-  <a class="active item" data-tab="first">Input Stack Traces</a>
-  <a class="item" data-tab="second" ng-click="vm.parseStacks()">Find Common Roots</a>
+  <a class="active item" data-tab="input">Input Stack Traces</a>
+  <a class="item" data-tab="slice" ng-click="vm.loadStats()">Stats</a>
+  <a class="item" data-tab="tree" ng-click="vm.loadTree()">Tree</a>
+  <a class="item" data-tab="about">About</a>
+  <span class="item right">Stacks: {{ vm.stackTraces.length }}</span>
 </div>
 
-<div class="ui bottom attached active tab segment" data-tab="first"
+<!-- TODO Add other stack trace sources, including polling sources. -->
+<div class="ui bottom attached active tab segment" data-tab="input"
      style="flex-grow: 1; flex-direction: column; margin-bottom: 0;">
   <textarea ng-model="stackTracesRaw" style="width: 100%; flex-grow: 1;"></textarea>
 </div>
 
-<div class="ui bottom attached tab segment" data-tab="second" style="flex-grow: 1;">
-  <div style="display: flex;">
-    <input type="text" ng-model="frameFilter" placeholder="frame filter" style="flex-grow: 1;">
-    <input type="text" ng-model="stackFilter" placeholder="stack filter" style="flex-grow: 1;">
+<div class="ui bottom attached tab segment grid" data-tab="slice" style="flex-grow: 1;">
+  <div class="ui grid">
+    <div class="two wide column">
+      <div class="ui fluid input">
+        <input type="text" ng-model="minCount" ng-model-options="{ debounce: 150 }"
+               ng-change="vm.refreshStats()" placeholder="min count">
+      </div>
+    </div>
+    <div class="six wide column">
+      <div class="ui fluid input">
+        <input type="text" ng-model="stackFilter" ng-model-options="{ debounce: 150 }"
+               ng-change="vm.refreshStats()" placeholder="stack filter">
+      </div>
+    </div>
+    <div class="eight wide column">
+      <div class="ui fluid input">
+        <input type="text" ng-model="lineFilter" ng-model-options="{ debounce: 150 }"
+               ng-change="vm.refreshStats()" placeholder="line filter">
+      </div>
+    </div>
+
+    <table class="ui table">
+      <thead>
+      <tr>
+        <th>count</th>
+        <th>line</th>
+      </tr>
+      </thead>
+      <tbody>
+      <tr ng-repeat="e in vm.stats" ng-if="e[1] >= minCount">
+        <td>{{ e[1] }}</td>
+        <td>{{ e[0] }}</td>
+      </tr>
+      </tbody>
+    </table>
+
   </div>
-  <table>
-    <tbody>
-    <tr><td>1</td></tr>
-    <tr><td>1</td><td>2</td></tr>
-    <tr><td>1</td><td>2</td></tr>
-    </tbody>
-  </table>
-  <div style="border: 1px solid black;" ng-repeat="st in vm.stackTraces">{{ st }}</div>
+
 </div>
 
+<div class="ui bottom attached tab segment" data-tab="tree" style="flex-grow: 1;">
+  <div class="ui grid">
+    <div class="eight wide column">
+      <div class="ui fluid input">
+        <input type="text" ng-model="stackFilter" ng-model-options="{ debounce: 150 }"
+               ng-change="vm.refreshTree()" placeholder="stack filter">
+      </div>
+    </div>
+    <div class="eight wide column">
+      <div class="ui fluid input">
+        <input type="text" ng-model="lineFilter" ng-model-options="{ debounce: 150 }"
+               ng-change="vm.refreshTree()" placeholder="line filter">
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="ui bottom attached tab segment" data-tab="about" style="flex-grow: 1;">
+  TODO
+</div>
 
 <script src="app.module.js"></script>
 </body>

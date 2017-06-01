@@ -6,15 +6,31 @@ angular.module('StackTraceDiffer', ['LocalStorageModule'])
   const minStackSize = 5;
 
   localStorageService.bind($scope, 'stackTracesRaw');
-  localStorageService.bind($scope, 'frameFilter');
   localStorageService.bind($scope, 'stackFilter');
+  localStorageService.bind($scope, 'lineFilter');
+  localStorageService.bind($scope, 'minCount', 1);
 
   const vm = this;
   vm.stackTraces = [];
-  vm.parseStacks = parseStacks;
-  vm.stackGroups = [];
+
+  vm.stats = []; // each element is [line, count]
+  vm.loadStats = loadStats;
+  vm.refreshStats = refreshStats;
+
+  vm.graph = []; // each element is {line, count, children: [ recurse ]}
+  vm.loadTree = loadTree;
 
   $('.menu .item').tab();
+
+  function loadStats() {
+    parseStacks();
+    refreshStats();
+  }
+
+  function loadTree() {
+    parseStacks();
+    refreshTree();
+  }
 
   function parseStacks() {
     vm.stackTraces = [];
@@ -39,17 +55,32 @@ angular.module('StackTraceDiffer', ['LocalStorageModule'])
     }
     checkCompleteStack();
     console.log('Parsed ' + vm.stackTraces.length + ' stacks.');
-
-    buildStackGroups();
   }
 
-  function buildStackGroups() {
-    let commonFrames = [];
-    let remainingStackTraces = $filter('filter')(vm.stackTraces, $scope.filter);
-    while (remainingStackTraces.length) {
-      let frame = '';
-      commonFrames.push();
-      ++idx;
+  function refreshStats() {
+    let stats = {}; // line -> count
+    let filteredStackTraces = $filter('filter')(vm.stackTraces, $scope.stackFilter);
+    for (let stackTrace of filteredStackTraces) {
+      let filteredLines = $filter('filter')(stackTrace, $scope.lineFilter);
+      for (let line of filteredLines) {
+        line = line.trim();
+        if (!stats[line]) {
+          stats[line] = 0;
+        }
+        stats[line]++;
+      }
+    }
+    vm.stats = _.orderBy(_.entries(stats), 1, 'desc');
+    console.log("Refreshed stats: " + vm.stats.length);
+  }
+
+  function refreshTree() {
+    let filteredStacks = _.map($filter('filter')(vm.stackTraces, $scope.stackFilter), function (st) {
+      return $filter('filter')(st, $scope.lineFilter);
+    });
+    
+    function buildBranch(parent, current) {
+      // TODO
     }
   }
 });
