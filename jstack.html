@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html ng-app="Jstack">
+<head>
+  <meta http-equiv="Content-Type" content="text/html" charset="UTF-8">
+
+  <link rel="stylesheet"
+        href="https://cdnjs.cloudflare.com/ajax/libs/semantic-ui/2.3.0/semantic.min.css">
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/angular.js/1.6.5/angular.min.js"></script>
+  <script
+    src="https://cdnjs.cloudflare.com/ajax/libs/angular-local-storage/0.7.1/angular-local-storage.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/lodash.js/4.17.5/lodash.min.js"></script>
+</head>
+
+<body class="ui container" ng-controller="RootCtrl">
+
+<div class="ui form">
+  <div class="fields">
+    <div class="eight wide field">
+      <label>groupers <small>(not yet implemented)</small></label>
+      <textarea ng-model="groupers" rows="4" disabled
+                placeholder="Groupers collapse multiple threads into the same group"></textarea>
+    </div>
+    <div class="eight wide field">
+      <label>jstack</label>
+      <textarea ng-model="text" rows="4"
+                placeholder="Paste me some jstack"></textarea>
+    </div>
+  </div>
+</div>
+
+<table class="ui very compact table">
+  <thead>
+  <tr>
+    <th>name</th>
+    <th>id</th>
+    <th>daemon</th>
+    <th>prio</th>
+    <th>os_prio</th>
+    <th>tid</th>
+    <th>nid</th>
+    <th>state</th>
+    <th>addr</th>
+  </tr>
+  </thead>
+  <tbody>
+  <tr ng-repeat="t in threads" track-by="t.name">
+    <td>{{ t.name }}</td>
+    <td>{{ t.id }}</td>
+    <td><i class="check icon" style="color: green;" ng-if="t.daemon"></i></td>
+    <td>{{ t.prio }}</td>
+    <td>{{ t.os_prio }}</td>
+    <td>{{ t.tid }}</td>
+    <td>{{ t.nid }}</td>
+    <td>{{ t.state }}</td>
+    <td>{{ t.addr }}</td>
+  </tr>
+  </tbody>
+</table>
+
+<script>
+
+  function RootCtrl($scope, localStorageService) {
+    localStorageService.bind($scope, 'text', '');
+    localStorageService.bind($scope, 'groupers', '');
+
+    let dbUpdateThreads = _.debounce(updateThreads, 500);
+
+    // TODO color groups, grey singulars
+    $scope.threads = [];
+
+    updateThreads();
+    $scope.$watch('text', dbUpdateThreads);
+
+    function updateThreads() {
+      let chunks = $scope.text.split(/\s*\n\s*\n\s*/);
+      $scope.threads = _(chunks).map(chunk => {
+        let it = chunk.split(/\n/, 2);
+        let desc = it[0];
+        let st = it[1];
+        if (!(desc.startsWith('"') && st)) {
+          return
+        }
+
+        let t = {
+          name: desc.match(/"(.*)"/)[1],
+        };
+
+        desc = desc.substr(t.name.length + 3);
+        it = desc.split(' ', 7);
+
+        t.id = parseInt(it[0].substr(1));
+        if (it[1] === 'daemon') {
+          desc = desc.substr(it[0].length + 1 + 6 + 1);
+          it = it.slice(2);
+          t.daemon = true;
+        } else {
+          desc = desc.substr(it[0].length + 1);
+          it = it.slice(1);
+          t.daemon = false;
+        }
+
+        t.prio = parseInt(it[0].split('=')[1]);
+        t.os_prio = parseInt(it[1].split('=')[1]);
+        t.tid = it[2].split('=')[1];
+        t.nid = it[3].split('=')[1];
+
+        desc = desc.substr(
+          it[0].length + 1 +
+          it[1].length + 1 +
+          it[2].length + 1 +
+          it[3].length + 1);
+
+        it = desc.split(' ');
+        t.state = it.slice(0, it.length - 1).join(' ');
+        t.addr = _.last(it);
+
+        t.st = st;
+
+        return t
+      }).filter().sortBy(t => t.name.toLowerCase()).value();
+    }
+
+  }
+
+  angular.module('Jstack', ['LocalStorageModule'])
+    .config((localStorageServiceProvider) => {
+      localStorageServiceProvider.setPrefix('jstack')
+    })
+    .controller('RootCtrl', RootCtrl)
+</script>
+</body>
+</html>
