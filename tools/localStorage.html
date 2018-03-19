@@ -54,7 +54,7 @@
   <tbody>
   <tr ng-repeat="(key, value) in localStorage">
     <td>
-      <button ng-click="localStorage.removeItem(key)">delete</button>
+      <button class="ui tiny red button" ng-click="localStorage.removeItem(key)">delete</button>
     </td>
     <td>{{ key.split('.', 1)[0] }}</td>
     <td>{{ key.split('.').slice(1).join('.') }}</td><!-- javascript is dumb -->
