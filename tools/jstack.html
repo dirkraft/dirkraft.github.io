@@ -20,6 +20,10 @@
     <textarea ng-model="text" ng-model-options="{ debounce: 500 }"
               rows="4" placeholder="Paste me some jstack"></textarea>
   </div>
+  <div class="ui checkbox">
+    <input type="checkbox" ng-model="daemon" ng-true-value="false" ng-false-value="undefined">
+    <label>show non-daemon threads only</label>
+  </div>
 </div>
 
 <table class="ui very compact table">
@@ -37,7 +41,7 @@
   </tr>
   </thead>
   <tbody>
-  <tr ng-repeat="t in threads">
+  <tr ng-repeat="t in threads | filter:{daemon}:strict">
     <td>{{ t.name }}</td>
     <td>{{ t.id }}</td>
     <td><i class="check icon" style="color: green;" ng-if="t.daemon"></i></td>
@@ -55,8 +59,8 @@
 
   function RootCtrl($scope, localStorageService) {
     localStorageService.bind($scope, 'text', '');
-    localStorageService.bind($scope, 'groupers', '');
 
+    $scope.nonDaemonOnly = undefined;
     // TODO color groups, grey singulars
     $scope.threads = [];
 
