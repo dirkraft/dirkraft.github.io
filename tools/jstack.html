@@ -15,17 +15,10 @@
 <body class="ui container" ng-controller="RootCtrl">
 
 <div class="ui form">
-  <div class="fields">
-    <div class="eight wide field">
-      <label>groupers <small>(not yet implemented)</small></label>
-      <textarea ng-model="groupers" rows="4" disabled
-                placeholder="Groupers collapse multiple threads into the same group"></textarea>
-    </div>
-    <div class="eight wide field">
-      <label>jstack</label>
-      <textarea ng-model="text" rows="4"
-                placeholder="Paste me some jstack"></textarea>
-    </div>
+  <div class="field">
+    <label>jstack output</label>
+    <textarea ng-model="text" ng-model-options="{ debounce: 500 }"
+              rows="4" placeholder="Paste me some jstack"></textarea>
   </div>
 </div>
 
@@ -44,7 +37,7 @@
   </tr>
   </thead>
   <tbody>
-  <tr ng-repeat="t in threads" track-by="t.name">
+  <tr ng-repeat="t in threads">
     <td>{{ t.name }}</td>
     <td>{{ t.id }}</td>
     <td><i class="check icon" style="color: green;" ng-if="t.daemon"></i></td>
@@ -64,15 +57,14 @@
     localStorageService.bind($scope, 'text', '');
     localStorageService.bind($scope, 'groupers', '');
 
-    let dbUpdateThreads = _.debounce(updateThreads, 500);
-
     // TODO color groups, grey singulars
     $scope.threads = [];
 
     updateThreads();
-    $scope.$watch('text', dbUpdateThreads);
+    $scope.$watch('text', updateThreads);
 
     function updateThreads() {
+      console.log(new Date());
       let chunks = $scope.text.split(/\s*\n\s*\n\s*/);
       $scope.threads = _(chunks).map(chunk => {
         let it = chunk.split(/\n/, 2);
@@ -120,7 +112,6 @@
         return t
       }).filter().sortBy(t => t.name.toLowerCase()).value();
     }
-
   }
 
   angular.module('Jstack', ['LocalStorageModule'])
