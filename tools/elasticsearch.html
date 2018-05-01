@@ -1,0 +1,201 @@
+<!doctype html>
+<html ng-app="ESFoolery">
+<head>
+  <meta http-equiv="Content-Type" content="text/html" charset="UTF-8">
+
+  <link rel="stylesheet"
+        href="https://cdnjs.cloudflare.com/ajax/libs/semantic-ui/2.2.10/semantic.min.css">
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/humanize-plus/1.6.0/humanize.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/lodash.js/4.9.0/lodash.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/URI.js/1.19.1/URI.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/moment.js/2.22.1/moment.min.js"></script>
+
+  <script src="https://ajax.googleapis.com/ajax/libs/angularjs/1.4.9/angular.js"></script>
+  <script
+    src="https://cdnjs.cloudflare.com/ajax/libs/angular-moment/1.2.0/angular-moment.min.js"></script>
+  <script
+    src="https://cdnjs.cloudflare.com/ajax/libs/angular-local-storage/0.7.1/angular-local-storage.min.js"></script>
+</head>
+<body ng-controller="RootCtrl" class="ui container">
+
+
+<form class="ui form">
+  <div class="fields">
+    <div class="fourteen wide field">
+      <label>ES URL</label>
+      <div class="ui input">
+        <input type="text" ng-model="url">
+      </div>
+    </div>
+    <div class="two wide field">
+      <label>refresh (seconds)</label>
+      <div class="ui input">
+        <input type="text" ng-model="refreshSec">
+      </div>
+    </div>
+  </div>
+</form>
+
+<h3 class="ui header">Tasks</h3>
+
+<table class="ui very compact small table">
+  <thead>
+  <tr>
+    <th ng-repeat="header in taskHeaders">{{ header }}</th>
+  </tr>
+  </thead>
+  <tbody>
+  <tr ng-repeat="summary in taskSummaries">
+    <td ng-repeat="header in taskHeaders">
+      {{ summary[header] }}
+    </td>
+  </tr>
+  </tbody>
+</table>
+
+<h3 class="ui header">Segments</h3>
+
+<table class="ui very compact small table">
+  <thead>
+  <tr>
+    <th ng-repeat="header in segmentHeaders">{{ header }}</th>
+  </tr>
+  </thead>
+  <tbody>
+  <tr ng-repeat="summary in segmentSummaries">
+    <td ng-repeat="header in segmentHeaders">
+      {{ summary[header] }}
+    </td>
+  </tr>
+  </tbody>
+</table>
+
+<h3 class="ui header">Threads</h3>
+
+<table class="ui very compact small table">
+  <thead>
+  <tr>
+    <th ng-repeat="header in threadHeaders">{{ header }}</th>
+  </tr>
+  </thead>
+  <tbody>
+  <tr>
+    <td ng-repeat="header in threadHeaders">
+      {{ threadSummaries[header] }}
+    </td>
+  </tr>
+  </tbody>
+</table>
+
+
+<script>
+  angular.module('ESFoolery', ['LocalStorageModule', 'angularMoment'])
+    .config((localStorageServiceProvider) => {
+      localStorageServiceProvider.setPrefix('elasticsearch')
+    })
+    .controller('RootCtrl', RootCtrl);
+
+  function RootCtrl($scope, $http, $timeout, localStorageService) {
+    localStorageService.bind($scope, 'url', 'http://localhost:9200');
+    localStorageService.bind($scope, 'refreshSec', '');
+
+    $scope.taskHeaders = ['action', 'hosts', 'tasks', 'start'];
+    $scope.taskSummaries = [];
+    $scope.segmentHeaders = ['index', 'shards', 'segments', 'min/max per shard'];
+    $scope.segmentSummaries = [];
+    $scope.threadHeaders = [];
+    $scope.threadSummaries = {};
+
+    $scope.$watch('url', () => {
+      if (!$scope.url) {
+        return;
+      }
+
+      refreshAll();
+    });
+
+    let refreshTimeout;
+    $scope.$watch('refreshSec', checkRefresh);
+
+    function checkRefresh() {
+      $timeout.cancel(refreshTimeout);
+      let refreshSec = $scope.refreshSec.trim();
+      if (refreshSec) {
+        refreshTimeout = $timeout(refreshAll, parseInt(refreshSec) * 1000)
+      }
+    }
+
+    function refreshAll() {
+      refreshTasks();
+      refreshSegments();
+      refreshThreads();
+
+      checkRefresh();
+    }
+
+    function refreshTasks() {
+      $http.get(URI($scope.url).path('_tasks').toString()).then(rsp => {
+        let nodes = _.values(rsp.data.nodes);
+        let tasks = _.flatMap(nodes, node => _.map(node.tasks, task => {
+          return {
+            action: task.action.split('[')[0], // ignore [n] suffix
+            host: node.host,
+            start: task.start_time_in_millis
+          }
+        }));
+
+        $scope.taskSummaries = _(tasks).groupBy('action').map((tasks, action) => {
+          return {
+            action,
+            hosts: _(tasks).map('host').uniq().size(),
+            tasks: tasks.length,
+            start: moment(_(tasks).map('start').min()).fromNow()
+          }
+        }).value();
+      });
+    }
+
+    function refreshSegments() {
+      $http.get(URI($scope.url).path('_segments').toString()).then(rsp => {
+        $scope.segmentSummaries = _(rsp.data.indices).map((index, name) => {
+          window.shards = index.shards;
+          let shards = _(index.shards).values().flatten().value();
+          let pr = _.groupBy(shards, 'routing.primary');
+
+          return {
+            'index': name,
+            'shards': shards.length + ' (' + _.size(pr[true]) + 'p ' + _.size(pr[false]) + 'r)',
+            'segments': _.flatMap(shards, s => _.values(s.segments)).length,
+            'min/max per shard': (
+              _(shards).map(s => _.size(s.segments)).min() +
+              '/' +
+              _(shards).map(s => _.size(s.segments)).max()
+            )
+          }
+        }).sortBy('index').value();
+      });
+    }
+
+    function refreshThreads() {
+      $http.get(URI($scope.url).path('_cat/thread_pool').query('?h=name,active').toString()).then(rsp => {
+        let threads = _(rsp.data.split('\n')).filter().map(line => {
+          let cells = line.split(/\s+/);
+          return {
+            name: cells[0],
+            active: parseInt(cells[1])
+          }
+        }).value();
+
+        $scope.threadSummaries = {};
+        _(threads).groupBy('name').each((threads, name) => {
+          $scope.threadSummaries[name] = _(threads).map('active').sum();
+        });
+
+        $scope.threadHeaders = _.keys($scope.threadSummaries);
+      });
+    }
+  }
+</script>
+</body>
+</html>
